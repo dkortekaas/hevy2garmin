@@ -27,7 +27,7 @@
   <img src="docs/screenshots/dashboard.png" alt="Dashboard" width="800">
 </p>
 
-> **Hevy Pro required.** The Hevy API is only available with a [Hevy Pro](https://hevyapp.com) subscription. Without it, hevy2garmin cannot access your workouts.
+> **Hevy Pro or a CSV export.** The Hevy API is only available with a [Hevy Pro](https://hevyapp.com) subscription. Without it, the web dashboard can still sync your workouts from a Hevy CSV export that you upload on the setup page (see [No Hevy Pro? Upload a CSV export](#no-hevy-pro-upload-a-csv-export)).
 
 ## Why?
 
@@ -53,7 +53,7 @@ current dashboard with sample data.
 
 ## Requirements
 
-- **[Hevy Pro](https://hevyapp.com) subscription** (required for API access)
+- **[Hevy Pro](https://hevyapp.com) subscription** for API access, **or** a Hevy CSV export uploaded in the web dashboard (free Hevy accounts)
 - A [Garmin Connect](https://connect.garmin.com) account
 - Python 3.10+ (for local install only, not needed for the Vercel deploy)
 
@@ -65,7 +65,7 @@ Pick the option that fits you best:
 
 Deploy from your phone or computer in about 5 minutes. No terminal or coding needed.
 
-> **You need [Hevy Pro](https://hevyapp.com) for API access.** Free Hevy accounts cannot use hevy2garmin.
+> **You need [Hevy Pro](https://hevyapp.com) for API access.** On a free Hevy account, skip step 1 and upload a CSV export in step 5 instead (see [No Hevy Pro? Upload a CSV export](#no-hevy-pro-upload-a-csv-export)).
 
 **Step 1: Get your Hevy API key**
 
@@ -91,7 +91,7 @@ Sign up at [github.com](https://github.com/signup). You'll use this to sign into
 
 Click **Continue to Dashboard**, then **Visit** to open your app. Bookmark this URL -- it's your dashboard.
 
-The setup page walks you through it: paste your Hevy API key from step 1, then enter your Garmin email and password and click **Connect**.
+The setup page walks you through it: paste your Hevy API key from step 1 (or, without Hevy Pro, upload a Hevy CSV export under **Or upload a Hevy CSV export**), then enter your Garmin email and password and click **Connect**.
 
 - If your Garmin account **does not** have 2FA enabled, you're connected in a second. That's it.
 - If your Garmin account **has 2FA enabled**, Garmin emails you a 6-digit code. A code input appears on the page, paste the code, click **Verify**. Done.
@@ -266,7 +266,27 @@ It lives alongside the Python package in the [`typescript/`](typescript) folder 
 2. Click **Generate API Key** and copy it
 3. Paste it into `hevy2garmin init`, the web dashboard setup, or set as `HEVY_API_KEY` env var
 
-If you don't see the Developer section, you need to upgrade to [Hevy Pro](https://hevyapp.com).
+If you don't see the Developer section, you need to upgrade to [Hevy Pro](https://hevyapp.com), or use a CSV export instead.
+
+## No Hevy Pro? Upload a CSV export
+
+The web dashboard can sync from a Hevy CSV export instead of (or next to) the API key. The export is available on every Hevy account, free ones included.
+
+1. In the Hevy app open **Profile → Settings → Export & Import Data → Export Workouts** and save the CSV file.
+2. On the dashboard's **Setup** page, under **Hevy → Or upload a Hevy CSV export**, choose the file.
+3. Check the **timezone**. Hevy writes the times in the export without an offset, so the dashboard needs to know which zone they are in. It defaults to the timezone saved on the Setup page, or your browser's.
+4. Optionally set **Only workouts from** to skip older workouts, for example ones that already reached Garmin another way.
+5. Click **Import CSV**. The workouts appear in the **To sync** list on the Workouts page and sync like any other workout. Importing itself uploads nothing.
+
+To sync newer workouts later, export again and upload the new file. Every imported workout gets an id derived from its start time, so workouts that were already imported or synced are recognised and never uploaded twice. With both an API key and a CSV import, a workout that appears in both is only synced once, through the API.
+
+Things to know:
+
+- Imported workouts sync from the dashboard (**Sync now**, the per-workout **Sync** button, **Sync all**) and from the Vercel cron (`/api/cron/sync`). The GitHub Actions auto-sync still runs the Python CLI, which only reads the Hevy API and does not see imported workouts.
+- Without an API key, new workouts only become available after your next upload.
+- The export has no Hevy exercise ids, so exercises are matched by name. Hevy set up in a language other than English can leave more exercises unmapped; add those on the **Mappings** page.
+- **Remove imported workouts** on the Setup page clears the import. Workouts already synced stay on Garmin and stay marked as synced.
+- Very large exports can exceed your host's upload limit (4.5 MB on Vercel). Use **Only workouts from** with a recent export to upload in parts.
 
 ## Credentials
 
@@ -448,8 +468,10 @@ Health Connect is Garmin's behavior. If you use Hevy for the gym and Garmin for
 running, your runs are untouched; only your Hevy workouts are added.
 
 **Do I need a Hevy Pro subscription?**
-Yes. The Hevy API key requires an active Hevy Pro subscription, and the key stops
+For the API, yes: the Hevy API key requires an active Hevy Pro subscription, and the key stops
 working once the subscription lapses. See [Getting Your Hevy API Key](#getting-your-hevy-api-key).
+Without Hevy Pro the web dashboard can sync from a CSV export instead; see
+[No Hevy Pro? Upload a CSV export](#no-hevy-pro-upload-a-csv-export).
 
 **Does it work with non-Garmin watches (Samsung, Amazfit/Zepp, etc.)?**
 The tool reads from **Hevy** and writes to **Garmin Connect** — it's not tied to

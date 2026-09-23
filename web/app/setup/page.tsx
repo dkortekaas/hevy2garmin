@@ -2,6 +2,8 @@ import { getDb } from "@/lib/db";
 import { authEnabled, productionRuntime } from "@/lib/auth";
 import { loadGarminConnection, loadHevyConnection, type Connection } from "@/lib/connections";
 import { ConnectHevy } from "@/components/connect-hevy";
+import { ImportHevyCsv } from "@/components/import-hevy-csv";
+import { loadImportSummary, NO_IMPORT, type ImportSummary } from "@/lib/imported-workouts";
 import { ConnectGarmin } from "@/components/connect-garmin";
 import { SetupTimezone } from "@/components/setup-timezone";
 
@@ -14,10 +16,12 @@ interface SetupData {
   garmin: Connection;
   /** user_profile.timezone, or null when nothing has been chosen yet (#639). */
   timezone: string | null;
+  /** Workouts imported from a Hevy CSV export, the alternative to an API key. */
+  hevyImport: ImportSummary;
 }
 
 const NONE: Connection = { connected: false, connectedAt: null };
-const EMPTY: SetupData = { dbConfigured: false, hevy: NONE, garmin: NONE, timezone: null };
+const EMPTY: SetupData = { dbConfigured: false, hevy: NONE, garmin: NONE, timezone: null, hevyImport: NO_IMPORT };
 
 async function loadSetup(): Promise<SetupData> {
   let sql: ReturnType<typeof getDb>;
@@ -26,19 +30,20 @@ async function loadSetup(): Promise<SetupData> {
   } catch {
     return EMPTY;
   }
-  const [hevy, garmin, profile] = await Promise.all([
+  const [hevy, garmin, profile, hevyImport] = await Promise.all([
     loadHevyConnection(sql),
     loadGarminConnection(sql),
     sql`SELECT value FROM app_cache WHERE key = 'user_profile' LIMIT 1`.catch(
       () => [] as Array<{ value: unknown }>,
     ),
+    loadImportSummary(sql),
   ]);
   const raw = profile[0]?.value;
   const tz =
     raw && typeof raw === "object" && typeof (raw as { timezone?: unknown }).timezone === "string"
       ? ((raw as { timezone: string }).timezone.trim() || null)
       : null;
-  return { dbConfigured: true, hevy, garmin, timezone: tz };
+  return { dbConfigured: true, hevy, garmin, timezone: tz, hevyImport };
 }
 
 function fmtDate(value: string | null): string {
@@ -118,6 +123,7 @@ export default async function SetupPage() {
   if (productionRuntime() && !authEnabled()) return <SetPasswordFirst />;
   const data = await loadSetup();
   const hevyConnected = data.hevy.connected;
+  const hevyImported = data.hevyImport.count > 0;
   const garminConnected = data.garmin.connected;
 
   return (
@@ -125,7 +131,7 @@ export default async function SetupPage() {
       <header className="mb-6">
         <h1 className="text-2xl font-bold text-text">Setup</h1>
         <p className="mt-1 text-sm text-text-secondary">
-          Connect Hevy and Garmin so your workouts can sync.
+          Connect Hevy (API key or CSV export) and Garmin so your workouts can sync.
         </p>
       </header>
 
@@ -139,7 +145,10 @@ export default async function SetupPage() {
       <section className="mb-6 rounded-xl border border-border bg-surface-elevated p-5">
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="text-lg font-semibold text-text">Hevy</h2>
-          <StatusDot connected={hevyConnected} />
+          <StatusDot
+            connected={hevyConnected || hevyImported}
+            labels={[hevyConnected ? "Connected" : "CSV imported", "Not connected"]}
+          />
         </div>
         {hevyConnected && data.hevy.connectedAt && (
           <p className="mb-3 text-xs text-text-muted">
@@ -147,6 +156,15 @@ export default async function SetupPage() {
           </p>
         )}
         <ConnectHevy connected={hevyConnected} />
+
+        {/* The alternative to the key: the API needs Hevy Pro, the export does not. */}
+        <div className="mt-5 border-t border-border pt-4">
+          <h3 className="mb-2 text-sm font-semibold text-text">Or upload a Hevy CSV export</h3>
+          <ImportHevyCsv
+            summary={{ count: data.hevyImport.count, newest: data.hevyImport.newest, oldest: data.hevyImport.oldest }}
+            savedTimeZone={data.timezone}
+          />
+        </div>
       </section>
 
       {/* Garmin */}

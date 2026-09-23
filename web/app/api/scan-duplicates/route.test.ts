@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const getAllWorkouts = vi.fn();
 vi.mock("@/lib/hevy-sync", () => ({
-  getHevyClient: async () => ({ getAllWorkouts: (...a: unknown[]) => getAllWorkouts(...a) }),
+  fetchAllWorkouts: (...a: unknown[]) => getAllWorkouts(...a),
 }));
 
 const detectDuplicates = vi.fn();

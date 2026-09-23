@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getHevyClient } from "@/lib/hevy-sync";
+import { fetchAllWorkouts } from "@/lib/hevy-sync";
 import { detectDuplicates, garminClient, type WorkoutWindow } from "@/lib/garmin-activities";
 
 // Reads live Hevy + Garmin at request time — never at build. Read-only: it
@@ -17,8 +17,7 @@ export const runtime = "nodejs";
  */
 export async function POST() {
   try {
-    const hevy = await getHevyClient();
-    const raw = (await hevy.getAllWorkouts()) as Array<Record<string, unknown>>;
+    const raw = (await fetchAllWorkouts()) as Array<Record<string, unknown>>;
     const workouts: WorkoutWindow[] = raw.slice(0, 50).map((w) => ({
       id: String(w.id),
       title: (w.title as string | null) ?? null,

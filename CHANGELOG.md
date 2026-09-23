@@ -6,6 +6,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Web: upload a Hevy CSV export on the Setup page as an alternative to (or next to) the Hevy API key, so accounts without Hevy Pro can sync too. Imported workouts are stored in a new `imported_workouts` table, get a deterministic id from their local start time so re-importing a newer export never duplicates, and go through the normal sync (dry-run by default). A workout present in both the API and the import is synced once, through the API.
+
 ## [0.12.0] - 2026-09-11
 
 ### Removed
