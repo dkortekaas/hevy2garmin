@@ -1,6 +1,7 @@
 import { getDb } from "@/lib/db";
 import { SettingsForm } from "@/components/settings-form";
 import { DangerZone } from "@/components/danger-zone";
+import { DeleteAllWorkouts } from "@/components/delete-all-workouts";
 import { SessionsCard } from "@/components/sessions-card";
 import { ScanDuplicates } from "@/components/scan-duplicates";
 
@@ -26,9 +27,11 @@ interface SettingsData {
   platforms: PlatformRow[];
   config: ConfigEntry[];
   syncedCount: number;
+  /** Every workout record the app holds: synced, in flight and CSV-imported. */
+  workoutRecords: number;
 }
 
-const EMPTY: SettingsData = { dbConfigured: false, platforms: [], config: [], syncedCount: 0 };
+const EMPTY: SettingsData = { dbConfigured: false, platforms: [], config: [], syncedCount: 0, workoutRecords: 0 };
 
 // The user-editable config the Python app persists to app_cache (config.py).
 const CONFIG_KEYS = ["user_profile", "timing", "hr_fusion", "merge_settings", "auto_sync"];
@@ -41,7 +44,7 @@ async function loadSettings(): Promise<SettingsData> {
     return EMPTY;
   }
 
-  const [platforms, config, counts] = await Promise.all([
+  const [platforms, config, counts, records] = await Promise.all([
     sql`
       SELECT platform, auth_type, status, connected_at, expires_at
       FROM platform_credentials
@@ -56,11 +59,20 @@ async function loadSettings(): Promise<SettingsData> {
     sql`SELECT count(*)::int AS n FROM synced_workouts`.catch(
       () => [] as Array<{ n: number }>,
     ),
+    // Distinct ids: an imported workout that synced has a row in both tables.
+    sql`
+      SELECT count(*)::int AS n FROM (
+        SELECT hevy_id FROM synced_workouts
+        UNION SELECT hevy_id FROM pending_uploads
+        UNION SELECT hevy_id FROM imported_workouts
+      ) ids
+    `.catch(() => [] as Array<{ n: number }>),
   ]);
 
   return {
     dbConfigured: true,
     syncedCount: Number(counts[0]?.n ?? 0),
+    workoutRecords: Number(records[0]?.n ?? 0),
     platforms: platforms.map((p) => ({
       platform: p.platform,
       auth_type: p.auth_type ?? "",
@@ -281,6 +293,7 @@ export default async function SettingsPage() {
       <section className="mt-8">
         <h2 className="mb-3 text-lg font-semibold text-danger">Danger zone</h2>
         <DangerZone syncedCount={data.syncedCount} />
+        <DeleteAllWorkouts total={data.workoutRecords} />
       </section>
     </main>
   );

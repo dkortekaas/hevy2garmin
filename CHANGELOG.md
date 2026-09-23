@@ -6,6 +6,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Web: **Delete all workouts** in the Settings danger zone (`POST /api/delete-all-workouts`, `confirm: "DELETE"`). Clears synced, in-flight and CSV-imported workouts and cached heart rate from the app only; Garmin and Hevy are untouched. Stops all syncing first and leaves it stopped, so the next sync cannot re-upload the whole history as duplicates.
+
 ### Fixed
 
 - Web: the dashboard kept showing Hevy as "Connected" after **Disconnect Hevy** whenever there were synced workouts or imported CSV workouts. Disconnect now marks the credential row `disconnected` (instead of deleting it), sync history only counts as connected for databases that never had a credential row, and a CSV-only setup shows "CSV import" on the badge.
