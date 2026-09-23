@@ -6,6 +6,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- Web: disabled sync buttons now say why. While **Stop all syncing** is on (which **Delete all workouts** leaves on) they claimed "Connect Hevy and Garmin first"; the dashboard now shows the actual reason above the buttons, and the Workouts page says syncing is stopped.
+
 ### Added
 
 - Web: **Delete all workouts** in the Settings danger zone (`POST /api/delete-all-workouts`, `confirm: "DELETE"`). Clears synced, in-flight and CSV-imported workouts and cached heart rate from the app only; Garmin and Hevy are untouched. Stops all syncing first and leaves it stopped, so the next sync cannot re-upload the whole history as duplicates.

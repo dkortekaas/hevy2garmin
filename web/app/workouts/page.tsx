@@ -1,6 +1,7 @@
 import { getDb } from "@/lib/db";
 import { WorkoutRow } from "@/components/workout-row";
 import { CandidatesList } from "@/components/candidates-list";
+import { loadSyncControl } from "@/lib/sync-control";
 
 // Queries the live hevy2garmin Postgres per request — never at build time.
 export const dynamic = "force-dynamic";
@@ -19,6 +20,8 @@ interface WorkoutItem {
 
 interface WorkoutsData {
   dbConfigured: boolean;
+  /** "Stop all syncing" is on: per-workout Sync is refused until it is resumed. */
+  syncStopped?: boolean;
   items: WorkoutItem[];
 }
 
@@ -32,7 +35,7 @@ async function loadWorkouts(): Promise<WorkoutsData> {
     return EMPTY;
   }
 
-  const [terminal, pending] = await Promise.all([
+  const [terminal, pending, control] = await Promise.all([
     sql`
       SELECT hevy_id, title, synced_at, garmin_activity_id,
              COALESCE(status, 'success') AS status
@@ -68,6 +71,7 @@ async function loadWorkouts(): Promise<WorkoutsData> {
           payload_title: string | null;
         }>,
     ),
+    loadSyncControl(sql),
   ]);
 
   const pendingItems: WorkoutItem[] = pending.map((p) => ({
@@ -96,7 +100,7 @@ async function loadWorkouts(): Promise<WorkoutsData> {
     }));
 
   // Pending first (they need attention), then terminal, each newest-first.
-  return { dbConfigured: true, items: [...pendingItems, ...terminalItems] };
+  return { dbConfigured: true, syncStopped: control.stopped, items: [...pendingItems, ...terminalItems] };
 }
 
 export default async function WorkoutsPage() {
@@ -116,6 +120,19 @@ export default async function WorkoutsPage() {
         with Mark as synced / Skip / Abandon, and expand a Garmin-matched workout
         to see its cached heart-rate.
       </div>
+
+      {data.syncStopped && (
+        <div
+          data-testid="sync-stopped-notice"
+          className="mb-4 rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm text-danger"
+        >
+          All syncing is stopped, so Sync is refused (Preview still works). Resume it on the{" "}
+          <a href="/dashboard" className="underline">
+            dashboard
+          </a>
+          .
+        </div>
+      )}
 
       {data.dbConfigured && <CandidatesList />}
 

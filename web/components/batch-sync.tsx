@@ -25,7 +25,15 @@ interface BatchResult {
  * sync engine. Because a batch uploads many activities, it is guarded behind an
  * inline confirmation, and the server independently requires authorization.
  */
-export function BatchSync({ ready }: { ready: boolean }) {
+export function BatchSync({
+  ready,
+  blockedReason,
+}: {
+  ready: boolean;
+  /** Why the live button is disabled, shown to the user. Defaults to the connect hint. */
+  blockedReason?: string | null;
+}) {
+  const blockedHint = blockedReason ?? "Connect Hevy and Garmin first";
   const router = useRouter();
   const [result, setResult] = useState<BatchResult | null>(null);
   const [busy, setBusy] = useState<null | "preview" | "live">(null);
@@ -80,7 +88,7 @@ export function BatchSync({ ready }: { ready: boolean }) {
               type="button"
               onClick={() => setConfirm(true)}
               disabled={busy !== null || !ready}
-              title={ready ? undefined : "Connect Hevy and Garmin first"}
+              title={ready ? undefined : blockedHint}
               className="rounded-lg bg-teal/20 px-3 py-1.5 text-sm font-medium text-teal transition-colors hover:bg-teal/30 disabled:opacity-50"
             >
               Sync all

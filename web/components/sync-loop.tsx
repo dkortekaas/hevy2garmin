@@ -44,7 +44,15 @@ async function recordRun(state: LoopState): Promise<void> {
   }
 }
 
-export function SyncLoop({ ready }: { ready: boolean }) {
+export function SyncLoop({
+  ready,
+  blockedReason,
+}: {
+  ready: boolean;
+  /** Why the live button is disabled, shown to the user. Defaults to the connect hint. */
+  blockedReason?: string | null;
+}) {
+  const blockedHint = blockedReason ?? "Connect Hevy and Garmin first";
   const router = useRouter();
   const [state, setState] = useState<LoopState>(initialLoopState);
   const [running, setRunning] = useState(false);
@@ -125,7 +133,7 @@ export function SyncLoop({ ready }: { ready: boolean }) {
             type="button"
             onClick={() => setConfirming(true)}
             disabled={!ready}
-            title={!ready ? "Connect Hevy and Garmin first" : undefined}
+            title={ready ? undefined : blockedHint}
             className="rounded-lg bg-teal/20 px-4 py-1.5 text-xs font-medium text-teal transition-colors hover:bg-teal/30 disabled:opacity-50"
           >
             Sync all now
