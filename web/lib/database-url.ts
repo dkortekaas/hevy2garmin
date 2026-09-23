@@ -47,3 +47,18 @@ export function resolveDatabaseUrl(
 
 /** The names, for an error message that tells the user what to actually set. */
 export const DATABASE_URL_HINT = DATABASE_URL_VARS.join(", ");
+
+/**
+ * The URL to hand to node-postgres (`pg`), which garmin-auth's DBTokenStore uses.
+ *
+ * pg 8 treats `sslmode=prefer|require|verify-ca` as `verify-full` and prints a
+ * SECURITY WARNING on every connect saying v9 will switch them to libpq's weaker
+ * meaning. Neon and Vercel hand out `?sslmode=require` URLs, so every token read
+ * logged that warning. Spelling out `verify-full` keeps exactly what pg does
+ * today, silences the warning and survives the v9 change without downgrading.
+ *
+ * Only for `pg`: the `postgres` driver in `db.ts` reads sslmode itself.
+ */
+export function pgConnectionString(url: string): string {
+  return url.replace(/([?&]sslmode=)(prefer|require|verify-ca)(?=&|#|$)/i, "$1verify-full");
+}

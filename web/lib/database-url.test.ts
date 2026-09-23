@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { resolveDatabaseUrl, DATABASE_URL_VARS } from "./database-url";
+import { resolveDatabaseUrl, DATABASE_URL_VARS, pgConnectionString } from "./database-url";
 
 /**
  * The web read `DATABASE_URL` and nothing else, while Python reads four names
@@ -63,5 +63,24 @@ describe("resolveDatabaseUrl", () => {
       "STORAGE_URL",
       "NEON_DATABASE_URL",
     ]);
+  });
+});
+
+describe("pgConnectionString", () => {
+  it("pins the modes pg 8 already treats as verify-full, so it stops warning", () => {
+    for (const mode of ["prefer", "require", "verify-ca"]) {
+      expect(pgConnectionString(`postgres://u:p@h/db?sslmode=${mode}`)).toBe("postgres://u:p@h/db?sslmode=verify-full");
+    }
+  });
+
+  it("keeps the other parameters around sslmode", () => {
+    expect(pgConnectionString("postgres://h/db?channel_binding=require&sslmode=require&x=1"))
+      .toBe("postgres://h/db?channel_binding=require&sslmode=verify-full&x=1");
+  });
+
+  it("leaves URLs without a weak sslmode alone", () => {
+    for (const url of ["postgres://h/db", "postgres://h/db?sslmode=disable", "postgres://h/db?sslmode=verify-full"]) {
+      expect(pgConnectionString(url)).toBe(url);
+    }
   });
 });
