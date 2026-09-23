@@ -16,6 +16,8 @@
  */
 import { HevyClient, HevyAuthError } from "hevy2garmin";
 import { getDb } from "./db";
+import { mergeWorkouts } from "./hevy-csv";
+import { loadImportedWorkouts } from "./imported-workouts";
 
 /** Read the stored Hevy API key from platform_credentials (platform='hevy'). */
 async function keyFromDb(): Promise<string | null> {
@@ -67,12 +69,35 @@ export async function fetchWorkoutCount(key?: string | null): Promise<number> {
 }
 
 /**
- * READ-only: fetch the full paginated workout history from Hevy.
- * Thin passthrough to HevyClient.getAllWorkouts, which walks every page.
+ * READ-only: every workout the sync can see, newest first.
+ *
+ * That is the API's full paginated history plus whatever was imported from a
+ * Hevy CSV export (lib/hevy-csv.ts). Either source alone is enough: a free Hevy
+ * account has no API key and syncs from the import only. An imported workout
+ * the API also returns is dropped, so having both never yields two copies.
+ *
+ * With a key, an API failure still throws: returning just the imported part
+ * would hide a revoked key behind a sync that looks like it worked.
  */
 export async function fetchAllWorkouts(key?: string | null): Promise<HevyWorkout[]> {
-  const client = await getHevyClient(key);
-  return withKeyStatus(async () => (await client.getAllWorkouts()) as HevyWorkout[]);
+  const imported = (await importedWorkouts()) as HevyWorkout[];
+  const apiKey = await resolveHevyKey(key);
+  if (!apiKey) {
+    if (imported.length) return imported;
+    throw new Error("No Hevy API key available (arg, HEVY_API_KEY, or platform_credentials), and no Hevy CSV imported.");
+  }
+  const client = new HevyClient(apiKey);
+  const fromApi = await withKeyStatus(async () => (await client.getAllWorkouts()) as HevyWorkout[]);
+  return mergeWorkouts(fromApi, imported);
+}
+
+/** Imported workouts, or none when there is no database. */
+async function importedWorkouts() {
+  try {
+    return await loadImportedWorkouts(getDb());
+  } catch {
+    return [];
+  }
 }
 
 /**

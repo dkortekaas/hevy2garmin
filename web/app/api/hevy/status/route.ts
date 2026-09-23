@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { loadGarminConnection, loadHevyConnection } from "@/lib/connections";
+import { loadImportSummary } from "@/lib/imported-workouts";
 
 // Reads the live hevy2garmin Postgres at request time — never at build.
 export const dynamic = "force-dynamic";
@@ -50,11 +51,13 @@ export async function GET() {
   // what; both helpers guard a missing table (fresh deploy that hasn't bootstrapped the schema).
   // This used to test status === 'connected', a value nothing writes, so both flags were always
   // false, and it read Garmin off the 'garmin' row a web login never creates (#495).
-  const [hevyConn, garminConn] = await Promise.all([
+  const [hevyConn, garminConn, hevyImport] = await Promise.all([
     loadHevyConnection(sql),
     loadGarminConnection(sql),
+    loadImportSummary(sql),
   ]);
-  const hevyConnected = hevyConn.connected;
+  // A Hevy CSV import counts: it is how an account without Hevy Pro syncs.
+  const hevyConnected = hevyConn.connected || hevyImport.count > 0;
   const garminConnected = garminConn.connected;
 
   // Aggregate counts over synced_workouts (success terminal state only).

@@ -95,6 +95,14 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
      scheduled_date TEXT,
      PRIMARY KEY (hevy_routine_id, schedule_id)
    )`,
+  // Web only, no Python counterpart: workouts imported from a Hevy CSV export,
+  // in the API's JSON shape (lib/imported-workouts.ts).
+  `CREATE TABLE IF NOT EXISTS imported_workouts (
+     hevy_id TEXT PRIMARY KEY,
+     start_time TIMESTAMPTZ,
+     data JSONB NOT NULL,
+     imported_at TIMESTAMPTZ DEFAULT NOW()
+   )`,
 ];
 
 /** The nine tables the Python bootstrap creates; the CI empty-database job asserts on them. */
@@ -102,6 +110,9 @@ export const SCHEMA_TABLES = [
   "synced_workouts", "sync_log", "hr_cache", "pending_uploads", "platform_credentials",
   "custom_mappings", "app_cache", "synced_routines", "routine_schedules",
 ] as const;
+
+/** Tables only the web app creates. */
+export const WEB_ONLY_TABLES = ["imported_workouts"] as const;
 
 /** A raw-SQL runner: postgres.js `client.unsafe(text)`. */
 export type UnsafeRunner = { unsafe: (text: string) => Promise<unknown> };

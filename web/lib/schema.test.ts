@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { ensureSchema, resetSchemaForTests, SCHEMA_STATEMENTS, SCHEMA_TABLES } from "./schema";
+import { ensureSchema, resetSchemaForTests, SCHEMA_STATEMENTS, SCHEMA_TABLES, WEB_ONLY_TABLES } from "./schema";
 
 function runner(failOn?: string) {
   const ran: string[] = [];
@@ -18,10 +18,11 @@ function runner(failOn?: string) {
 beforeEach(() => resetSchemaForTests());
 
 describe("ensureSchema (#475)", () => {
-  it("creates the nine Python tables, every statement IF NOT EXISTS", () => {
+  it("creates the nine Python tables plus the web-only ones, every statement IF NOT EXISTS", () => {
     const creates = SCHEMA_STATEMENTS.filter((s) => s.startsWith("CREATE TABLE"));
-    expect(creates).toHaveLength(9);
-    for (const t of SCHEMA_TABLES) expect(creates.some((s) => s.includes(`IF NOT EXISTS ${t} (`))).toBe(true);
+    expect(creates).toHaveLength(SCHEMA_TABLES.length + WEB_ONLY_TABLES.length);
+    expect(SCHEMA_TABLES).toHaveLength(9);
+    for (const t of [...SCHEMA_TABLES, ...WEB_ONLY_TABLES]) expect(creates.some((s) => s.includes(`IF NOT EXISTS ${t} (`))).toBe(true);
     for (const s of SCHEMA_STATEMENTS) expect(s).toMatch(/IF NOT EXISTS/);
   });
 

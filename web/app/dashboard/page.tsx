@@ -1,5 +1,6 @@
 import { getDb } from "@/lib/db";
 import { loadGarminConnection, loadHevyConnection } from "@/lib/connections";
+import { loadImportSummary } from "@/lib/imported-workouts";
 import { SyncPanel } from "@/components/sync-panel";
 import { SyncLoop } from "@/components/sync-loop";
 import { BatchSync } from "@/components/batch-sync";
@@ -73,7 +74,7 @@ async function loadDashboard(): Promise<DashboardData> {
 
   // Every query is guarded so a missing/empty table degrades to a sane default
   // rather than crashing the whole page render.
-  const [hevyConn, garminConn, counts, recent, syncLog, autoSync, pendingRow, routinesRow] = await Promise.all([
+  const [hevyConn, garminConn, counts, recent, syncLog, autoSync, pendingRow, routinesRow, hevyImport] = await Promise.all([
     loadHevyConnection(sql),
     loadGarminConnection(sql),
     sql`
@@ -112,6 +113,7 @@ async function loadDashboard(): Promise<DashboardData> {
         )::int AS scheduled
       FROM synced_routines
     `.catch(() => [] as Array<{ total: number; scheduled: number }>),
+    loadImportSummary(sql),
   ]);
 
   const autoSyncValue =
@@ -123,7 +125,8 @@ async function loadDashboard(): Promise<DashboardData> {
     dbConfigured: true,
     // See lib/connections.ts for which row means what. The `recent` fallbacks keep a user who
     // synced under an older build showing as connected even if their credential row is odd.
-    hevyConnected: hevyConn.connected || recent.length > 0,
+    // A Hevy CSV import is a source on its own, for accounts without Hevy Pro.
+    hevyConnected: hevyConn.connected || recent.length > 0 || hevyImport.count > 0,
     garminConnected:
       garminConn.connected || recent.some((r) => r.garmin_activity_id != null),
     totalSynced: counts[0]?.total ?? 0,
@@ -249,7 +252,7 @@ export default async function DashboardPage() {
               ? "Connect Hevy and Garmin to start syncing."
               : !data.garminConnected
                 ? "Garmin isn't connected — connect it to upload workouts."
-                : "Hevy isn't connected — connect it to pull workouts."}
+                : "Hevy isn't connected — add an API key or upload a CSV export to pull workouts."}
           </p>
           <a
             href="/setup"

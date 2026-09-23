@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import { getHevyClient } from "@/lib/hevy-sync";
+import { fetchAllWorkouts } from "@/lib/hevy-sync";
 import { computeUnmapped, type WorkoutLike } from "@/lib/unmapped-exercises";
 
 export const dynamic = "force-dynamic";
@@ -27,8 +27,7 @@ export async function GET() {
 
   let workouts: WorkoutLike[];
   try {
-    const client = await getHevyClient();
-    workouts = (await client.getAllWorkouts()) as WorkoutLike[];
+    workouts = (await fetchAllWorkouts()) as WorkoutLike[];
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ unmapped: [], total: 0, error }, { status: 502 });

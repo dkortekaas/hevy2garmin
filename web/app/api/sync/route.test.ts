@@ -25,7 +25,7 @@ vi.mock("@/lib/garmin-activities", () => ({
   detectDuplicates: async () => [],
   garminClient: async () => ({}),
 }));
-vi.mock("@/lib/hevy-sync", () => ({ getHevyClient: async () => ({ getAllWorkouts: async () => [] }) }));
+vi.mock("@/lib/hevy-sync", () => ({ fetchAllWorkouts: async () => [] }));
 
 const authEnabled = vi.fn();
 const verifySession = vi.fn();

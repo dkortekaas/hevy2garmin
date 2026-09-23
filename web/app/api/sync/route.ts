@@ -7,7 +7,7 @@ import { getDb } from "@/lib/db";
 import { acquireSyncLock } from "hevy2garmin";
 import { postgresLockBackend } from "@/lib/sync-lock-store";
 import { detectDuplicates, garminClient } from "@/lib/garmin-activities";
-import { getHevyClient } from "@/lib/hevy-sync";
+import { fetchAllWorkouts } from "@/lib/hevy-sync";
 import { getGithubPat, getGithubRepo, triggerViaActions } from "@/lib/github";
 import { verifySession, SESSION_COOKIE, authEnabled } from "@/lib/auth";
 
@@ -166,8 +166,7 @@ export async function POST(request: Request) {
   // about it unless they went looking (#608). Log-only: nothing is deleted.
   let duplicates = 0;
   try {
-    const hevy = await getHevyClient();
-    const raw = (await hevy.getAllWorkouts()) as Array<Record<string, unknown>>;
+    const raw = (await fetchAllWorkouts()) as Array<Record<string, unknown>>;
     const windows = raw.slice(0, 50).map((w) => ({
       id: String(w.id),
       title: (w.title as string | null) ?? null,
