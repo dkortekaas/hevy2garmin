@@ -399,7 +399,7 @@ export default async function DashboardPage() {
           </div>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-border bg-surface-elevated">
-            <table className="w-full text-sm">
+            <table className="w-full whitespace-nowrap text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-text-muted">
                   <th className="px-4 py-2 font-medium">When</th>
