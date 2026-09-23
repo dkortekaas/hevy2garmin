@@ -15,6 +15,34 @@ export function ConnectHevy({ connected }: { connected: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const [okMsg, setOkMsg] = useState<string | null>(null);
 
+  async function disconnect() {
+    if (
+      !window.confirm(
+        "Disconnect Hevy? The saved API key is removed. Your sync history and imported CSV workouts are kept.",
+      )
+    ) {
+      return;
+    }
+    setError(null);
+    setOkMsg(null);
+    setBusy(true);
+    try {
+      const res = await fetch("/api/connect-hevy", { method: "DELETE" });
+      const d = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; warning?: string };
+      if (!res.ok || !d.ok) {
+        setError(d.error ?? `Request failed (${res.status}).`);
+        return;
+      }
+      if (d.warning) setError(d.warning);
+      else setOkMsg("Hevy disconnected.");
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -68,14 +96,25 @@ export function ConnectHevy({ connected }: { connected: boolean }) {
         placeholder="Hevy API key"
         className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text focus:border-teal focus:outline-none"
       />
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <button
           type="submit"
           disabled={busy}
           className="rounded-lg bg-teal/20 px-4 py-2 text-sm font-medium text-teal transition-colors hover:bg-teal/30 disabled:opacity-50"
         >
-          {busy ? "Validating…" : "Validate & save"}
+          {busy ? "Working…" : "Validate & save"}
         </button>
+        {connected && (
+          <button
+            type="button"
+            onClick={disconnect}
+            disabled={busy}
+            data-testid="disconnect-hevy"
+            className="rounded-lg border border-danger/40 px-3 py-2 text-sm text-danger transition-colors hover:bg-danger/10 disabled:opacity-50"
+          >
+            Disconnect Hevy
+          </button>
+        )}
         {okMsg && <span className="text-xs text-success">{okMsg}</span>}
         {error && (
           <span className="text-xs text-danger" role="alert">

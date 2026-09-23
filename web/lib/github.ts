@@ -172,3 +172,29 @@ export async function disableGithubActions(opts: { pat: string; repo: string; fe
     return del.ok;
   } catch { return false; }
 }
+
+/**
+ * Cancel queued and running runs of the auto-sync workflow, for "Stop all
+ * syncing". Deleting the workflow file stops future runs but not one already
+ * going, and that one keeps uploading until the Python loop notices the stop
+ * switch. Best effort: returns how many cancels GitHub accepted.
+ */
+export async function cancelSyncWorkflowRuns(opts: { pat: string; repo: string; fetchImpl?: typeof fetch }): Promise<number> {
+  const f = opts.fetchImpl ?? fetch;
+  const call = (path: string, init: RequestInit = {}) => f(`https://api.github.com/repos/${opts.repo}/${path}`, {
+    ...init, headers: { Authorization: `Bearer ${opts.pat}`, Accept: "application/vnd.github+json" }, signal: AbortSignal.timeout(10_000),
+  });
+  let cancelled = 0;
+  for (const status of ["in_progress", "queued"]) {
+    try {
+      const res = await call(`actions/workflows/sync.yml/runs?status=${status}&per_page=20`);
+      if (!res.ok) continue;
+      const { workflow_runs = [] } = (await res.json()) as { workflow_runs?: Array<{ id: number }> };
+      for (const run of workflow_runs) {
+        const c = await call(`actions/runs/${run.id}/cancel`, { method: "POST" });
+        if (c.ok || c.status === 202) cancelled++;
+      }
+    } catch { /* best effort */ }
+  }
+  return cancelled;
+}

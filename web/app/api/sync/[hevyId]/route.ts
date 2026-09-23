@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { syncOneWorkout } from "@/lib/sync-one";
+import { SyncStoppedError } from "@/lib/sync-control";
 import { getDb } from "@/lib/db";
 import { recordSyncRun } from "hevy2garmin";
 import { postgresSyncStore } from "@/lib/sync-store";
@@ -92,6 +93,9 @@ export async function POST(
     }
     return NextResponse.json(result);
   } catch (err) {
+    if (err instanceof SyncStoppedError) {
+      return NextResponse.json({ error: err.message, stopped: true }, { status: 423 });
+    }
     const error = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error }, { status: 500 });
   }

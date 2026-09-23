@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { syncOneWorkout } from "@/lib/sync-one";
 import { getDb } from "@/lib/db";
+import { isSyncStopped, SyncStoppedError } from "@/lib/sync-control";
 import { getGithubPat, getGithubRepo, triggerViaActions } from "@/lib/github";
 
 // Runs a sync at request time — never at build.
@@ -35,6 +36,10 @@ export async function POST(request: Request) {
   // Settings row first, GITHUB_PAT fallback (#458). The DB handle may be unavailable here; env still works.
   let sqlForPat: ReturnType<typeof getDb> | null = null;
   try { sqlForPat = getDb(); } catch { sqlForPat = null; }
+  // "Stop all syncing" is on: a scheduled run does nothing, not even dispatch.
+  if (sqlForPat && (await isSyncStopped(sqlForPat))) {
+    return NextResponse.json({ ok: true, mode: "stopped", ran: 0 });
+  }
   const pat = await getGithubPat(sqlForPat);
   const repo = getGithubRepo();
   if (pat && repo) {
@@ -61,6 +66,7 @@ export async function POST(request: Request) {
     const result = await syncOneWorkout(sql, { dryRun: false, respectGrace: true });
     return NextResponse.json({ ok: true, mode: "inline", status: result.status });
   } catch (err) {
+    if (err instanceof SyncStoppedError) return NextResponse.json({ ok: true, mode: "stopped", ran: 0 });
     const error = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ ok: false, error }, { status: 500 });
   }

@@ -8,6 +8,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Web: **Stop all syncing** on the dashboard. One switch (app_cache `sync_control`) that every upload path checks: the dashboard buttons, `/api/sync`, the cron and webhook routes, routine sync and scheduling, and the Python CLI run by GitHub Actions. Running loops end at their next workout; stopping also turns auto-sync off, removes the Actions workflow and cancels queued or running runs. **Resume syncing** clears it; dry runs stay allowed.
+- Web: **Disconnect Hevy** on the Setup page (`DELETE /api/connect-hevy`) removes the saved API key and keeps sync history and imported workouts. Warns when `HEVY_API_KEY` in the environment keeps the connection alive.
+
+### Added
+
 - Web: upload a Hevy CSV export on the Setup page as an alternative to (or next to) the Hevy API key, so accounts without Hevy Pro can sync too. Imported workouts are stored in a new `imported_workouts` table, get a deterministic id from their local start time so re-importing a newer export never duplicates, and go through the normal sync (dry-run by default). A workout present in both the API and the import is synced once, through the API.
 
 ## [0.12.0] - 2026-09-11

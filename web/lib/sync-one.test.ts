@@ -147,3 +147,19 @@ describe("listCandidates (route shim)", () => {
     expect(h.ps.isSynced).toHaveBeenCalledWith("w9", SQL);
   });
 });
+
+describe("the stop switch (lib/sync-control)", () => {
+  const STOPPED = makeSql({ sync_control: { stopped: true } }) as never;
+
+  it("refuses a live upload while syncing is stopped, before the engine runs", async () => {
+    const { SyncStoppedError } = await import("./sync-control");
+    await expect(syncOneWorkout(STOPPED, { dryRun: false })).rejects.toBeInstanceOf(SyncStoppedError);
+    expect(h.engine.syncOneWorkout).not.toHaveBeenCalled();
+  });
+
+  it("still allows a dry run, which never touches Garmin", async () => {
+    await syncOneWorkout(STOPPED, { dryRun: true });
+    await syncOneWorkout(STOPPED);
+    expect(h.engine.syncOneWorkout).toHaveBeenCalledTimes(2);
+  });
+});

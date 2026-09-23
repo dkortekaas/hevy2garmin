@@ -58,6 +58,23 @@ def _resolve_store() -> Any:
     return candidate if isinstance(candidate, Database) else db
 
 
+def sync_stopped(store: Any) -> bool:
+    """True when "Stop all syncing" is on in the web dashboard.
+
+    The dashboard stores the switch as app_cache ``sync_control`` = ``{"stopped": true}``.
+    The GitHub Actions auto-sync runs this module against the same database, so
+    it checks the switch before every upload and a run that is already going
+    stops at its next workout. A read failure counts as not stopped: the switch
+    is opt-in and must not halt syncing because of a hiccup.
+    """
+    try:
+        value = store.get_app_config("sync_control")
+    except Exception:
+        logger.debug("Could not read sync_control", exc_info=True)
+        return False
+    return isinstance(value, dict) and value.get("stopped") is True
+
+
 def _cache_routines_total(store: Any, count: int) -> None:
     """Cache the routine count so the dashboard can show "pending" without a Hevy call."""
     try:
@@ -791,6 +808,11 @@ def sync(
         wid = workout.get("id", "unknown")
         title = workout.get("title", "Workout")
 
+        if not dry_run and sync_stopped(store):
+            logger.warning("Syncing is stopped from the dashboard; ending this run.")
+            stats["stopped"] = True
+            break
+
         if skip_existing and store.is_synced(wid):
             logger.debug("Skipping %s (%s) — already synced", wid, title)
             stats["skipped"] += 1
@@ -1204,6 +1226,9 @@ def sync_routines(
     }
 
     for routine in routines:
+        if not dry_run and sync_stopped(store):
+            logger.warning("Syncing is stopped from the dashboard; ending this run.")
+            break
         res = _sync_one_routine(
             routine,
             store,

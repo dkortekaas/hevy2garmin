@@ -4,6 +4,7 @@ import { syncOneWorkout, type SyncOneResult } from "@/lib/sync-one";
 import { postgresSyncStore } from "@/lib/sync-store";
 import { recordSyncRun } from "hevy2garmin";
 import { getDb } from "@/lib/db";
+import { isSyncStopped, SyncStoppedError, SYNC_STOPPED_MESSAGE } from "@/lib/sync-control";
 import { acquireSyncLock } from "hevy2garmin";
 import { postgresLockBackend } from "@/lib/sync-lock-store";
 import { detectDuplicates, garminClient } from "@/lib/garmin-activities";
@@ -99,6 +100,11 @@ export async function POST(request: Request) {
     }
   }
 
+  // "Stop all syncing" is on: refuse before dispatching anything.
+  if (await isSyncStopped(sql)) {
+    return NextResponse.json({ error: SYNC_STOPPED_MESSAGE, stopped: true, runs: [] }, { status: 423 });
+  }
+
   // Live, deployed: hand off to the GitHub Action so the long browser-auth sync
   // runs off the request path.
   const pat = await getGithubPat(sql);   // Settings row first, GITHUB_PAT fallback (#458)
@@ -141,6 +147,9 @@ export async function POST(request: Request) {
 
   // Live, local/self-hosted: loop the tested single-workout engine.
   const runs: SyncOneResult[] = [];
+  // Set when the stop switch is flipped while this batch runs. The batch ends
+  // at the next workout and reports what it did up to then.
+  let stopped = false;
   try {
     for (let i = 0; i < CAP; i++) {
       const r = await syncOneWorkout(sql, { dryRun: false });
@@ -154,8 +163,12 @@ export async function POST(request: Request) {
       if (r.status === "error") break;
     }
   } catch (err) {
-    const error = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error, runs }, { status: 500 });
+    if (err instanceof SyncStoppedError) {
+      stopped = true;
+    } else {
+      const error = err instanceof Error ? err.message : String(err);
+      return NextResponse.json({ error, runs }, { status: 500 });
+    }
   } finally {
     await lock.release();
   }
@@ -216,6 +229,7 @@ export async function POST(request: Request) {
   return NextResponse.json({
     dryRun: false,
     mode: "inline",
+    stopped,
     ran: runs.length,
     totalSynced,
     totalSkipped,

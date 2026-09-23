@@ -24,7 +24,11 @@ function sqlWith(rows: unknown[]) {
   const texts: string[] = [];
   let calls = 0;
   const sql = ((strings: TemplateStringsArray, ..._values: unknown[]) => {
-    texts.push(strings.join("?"));
+    const text = strings.join("?");
+    // The stop-switch read (lib/sync-control) is not the routine lookup these
+    // tests answer; it finds nothing, which means syncing is allowed.
+    if (text.includes("FROM app_cache")) return Promise.resolve([]);
+    texts.push(text);
     calls += 1;
     const p = Promise.resolve(calls === 1 ? rows : []);
     return p;

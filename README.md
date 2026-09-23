@@ -386,6 +386,16 @@ git pull origin main
 pip install -e .
 ```
 
+## Stopping all syncing
+
+The dashboard has a **Stop all syncing** button. It sets one switch in the database that every upload path checks: the dashboard's sync buttons, the Vercel cron and webhook, routine sync and scheduling, and the Python CLI that the GitHub Actions auto-sync runs. A sync that is already running ends after the workout it is on (a half-finished upload is never cut off), nothing new is uploaded to Garmin, and auto-sync is turned off. On a GitHub Actions setup the workflow is removed and queued or running runs are cancelled.
+
+**Resume syncing** lifts the switch. Auto-sync stays off until you turn it back on. Dry-run previews keep working while syncing is stopped.
+
+## Disconnecting Hevy
+
+**Disconnect Hevy** on the Setup page removes the saved Hevy API key. Your sync history and any CSV-imported workouts are kept, so reconnecting later never uploads a workout twice. If `HEVY_API_KEY` is set as an environment variable, the app keeps using that key; remove it from your host's environment too.
+
 ## Activity Description
 
 When hevy2garmin syncs a workout, it adds a text description to the Garmin activity summarizing your session:
