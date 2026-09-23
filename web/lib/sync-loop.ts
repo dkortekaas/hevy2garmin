@@ -77,10 +77,18 @@ export function stepLoop(prev: LoopState, input: StepInput): StepOutput {
   if (httpStatus === 401) {
     return { state: { ...s, done: true, errorKind: "unauthorized", message: "Sign in to sync." }, cont: false };
   }
-  // Any non-OK HTTP → stop with the server message.
+  // Which workout failed, when the server said: "which one" is the first thing to know.
+  const failing = result.workout?.title ? `${result.workout.title}: ` : "";
+
+  // Any non-OK HTTP → stop with the server message. A body that is not JSON (a
+  // platform timeout page, say) leaves only the status, so name the common one.
   if (httpStatus >= 400) {
+    const fallback =
+      httpStatus === 504
+        ? "The server timed out (504) on this workout. Try Sync all again; it continues where it stopped."
+        : `Sync failed (${httpStatus}).`;
     return {
-      state: { ...s, done: true, errorKind: "generic", message: result.error ?? `Sync failed (${httpStatus}).` },
+      state: { ...s, done: true, errorKind: "generic", message: failing + (result.error ?? fallback) },
       cont: false,
     };
   }
@@ -90,7 +98,7 @@ export function stepLoop(prev: LoopState, input: StepInput): StepOutput {
 
   if (status === "error") {
     const kind = classifyError(result.error ?? "");
-    return { state: { ...s, done: true, errorKind: kind, message: result.error ?? "Sync error." }, cont: false };
+    return { state: { ...s, done: true, errorKind: kind, message: failing + (result.error ?? "Sync error.") }, cont: false };
   }
   if (result.dedupDecision === "claim_lost") {
     return { state: { ...s, done: true, message: "Another sync is already running." }, cont: false };

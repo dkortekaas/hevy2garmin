@@ -8,6 +8,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Web: **Sync all** showed only "Something went wrong during the sync." on an unrecognised error. It now also shows the server's message, prefixed with the workout that failed, and explains a 504 timeout page.
+
+### Fixed
+
 - Web: disabled sync buttons now say why. While **Stop all syncing** is on (which **Delete all workouts** leaves on) they claimed "Connect Hevy and Garmin first"; the dashboard now shows the actual reason above the buttons, and the Workouts page says syncing is stopped.
 
 ### Added
