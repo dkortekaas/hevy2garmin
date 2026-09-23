@@ -251,6 +251,18 @@ export default async function DashboardPage() {
   const data = await loadDashboard();
   // "Stop all syncing" disables the sync buttons along with the uploads behind them.
   const syncReady = data.hevyConnected && data.garminConnected && !data.syncControl.stopped;
+  // Said out loud, because a greyed-out button with a hover hint that names the wrong cause
+  // (it always said "Connect Hevy and Garmin first") is how "Delete all workouts", which
+  // leaves syncing stopped, looked like a broken Sync all.
+  const syncBlockedReason = data.syncControl.stopped
+    ? "Syncing is stopped. Click Resume syncing above to upload to Garmin again."
+    : !data.hevyConnected && !data.garminConnected
+      ? "Connect Hevy (API key or CSV import) and Garmin on the Setup page first."
+      : !data.hevyConnected
+        ? "Hevy isn't connected: add an API key or import a CSV on the Setup page."
+        : !data.garminConnected
+          ? "Garmin isn't connected: connect it on the Setup page."
+          : null;
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 md:px-6">
@@ -326,12 +338,20 @@ export default async function DashboardPage() {
       )}
 
       {/* Sync controls (preview is dry-run; live upload is gated) */}
-      <SyncPanel ready={syncReady} />
+      {data.dbConfigured && syncBlockedReason && (
+        <p
+          data-testid="sync-blocked-reason"
+          className="mb-3 rounded-lg border border-warm/40 bg-warm/10 px-4 py-2 text-xs text-warm"
+        >
+          Sync buttons are disabled. {syncBlockedReason}
+        </p>
+      )}
+      <SyncPanel ready={syncReady} blockedReason={syncBlockedReason} />
       <div className="mt-3">
-        <SyncLoop ready={syncReady} />
+        <SyncLoop ready={syncReady} blockedReason={syncBlockedReason} />
       </div>
       <div className="mt-3">
-        <BatchSync ready={syncReady} />
+        <BatchSync ready={syncReady} blockedReason={syncBlockedReason} />
       </div>
 
       <div className="mb-8">

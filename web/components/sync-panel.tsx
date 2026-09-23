@@ -61,7 +61,15 @@ function fmtDuration(s: number): string {
  * confirmation, and the server independently requires authorization before it
  * will run live.
  */
-export function SyncPanel({ ready }: { ready: boolean }) {
+export function SyncPanel({
+  ready,
+  blockedReason,
+}: {
+  ready: boolean;
+  /** Why the live button is disabled, shown to the user. Defaults to the connect hint. */
+  blockedReason?: string | null;
+}) {
+  const blockedHint = blockedReason ?? "Connect Hevy and Garmin first";
   const router = useRouter();
   const [result, setResult] = useState<SyncResult | null>(null);
   const [busy, setBusy] = useState<null | "preview" | "live">(null);
@@ -116,7 +124,7 @@ export function SyncPanel({ ready }: { ready: boolean }) {
               type="button"
               onClick={() => setConfirmLive(true)}
               disabled={busy !== null || !ready}
-              title={ready ? undefined : "Connect Hevy and Garmin first"}
+              title={ready ? undefined : blockedHint}
               className="rounded-lg bg-teal/20 px-3 py-1.5 text-sm font-medium text-teal transition-colors hover:bg-teal/30 disabled:opacity-50"
             >
               Sync now
