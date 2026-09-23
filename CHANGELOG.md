@@ -8,6 +8,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Web: **Sync all** stopped at the first dropped request, which on a phone is most long runs (Safari reports it as "Load failed" when the screen locks or the connection blips). It now retries a dropped request or a 502/503/504 up to four times (2, 5, 10, 20 s), waits until the page is in front again before retrying, and only then stops with an explanation. Safe because the server never uploads a workout twice.
+
+### Fixed
+
 - Web: **Sync all** showed only "Something went wrong during the sync." on an unrecognised error. It now also shows the server's message, prefixed with the workout that failed, and explains a 504 timeout page.
 
 ### Fixed

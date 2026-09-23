@@ -7,9 +7,29 @@ import {
   stepLoop,
   loopPercent,
   errorHint,
+  isRetryableStatus,
+  networkGiveUpMessage,
+  NETWORK_RETRY_DELAYS_MS,
   type LoopState,
   type SyncOneLike,
 } from "@/lib/sync-loop";
+
+/**
+ * Resolves once the page is in front again. A phone suspends a background tab's
+ * network, so a retry fired while hidden would only fail the same way.
+ */
+function waitUntilVisible(): Promise<void> {
+  if (typeof document === "undefined" || document.visibilityState === "visible") return Promise.resolve();
+  return new Promise((resolve) => {
+    const onChange = () => {
+      if (document.visibilityState === "visible") {
+        document.removeEventListener("visibilitychange", onChange);
+        resolve();
+      }
+    };
+    document.addEventListener("visibilitychange", onChange);
+  });
+}
 
 /**
  * Live "Sync all" for the dashboard — ports the Python syncNow() loop. Clicking
@@ -58,6 +78,7 @@ export function SyncLoop({
   const [running, setRunning] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const stopRef = useRef(false);
+  const [retryNote, setRetryNote] = useState<string | null>(null);
 
   async function runLoop() {
     setConfirming(false);
@@ -75,18 +96,38 @@ export function SyncLoop({
         }
         let httpStatus = 0;
         let result: SyncOneLike = {};
-        try {
-          // batch=1: this loop posts ONE aggregate row to /api/sync-run when it
-          // finishes, so the route must not also write a row per workout.
-          const res = await fetch("/api/sync-one?live=1&batch=1", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ live: 1 }),
-          });
-          httpStatus = res.status;
-          result = (await res.json().catch(() => ({}))) as SyncOneLike;
-        } catch (err) {
-          cur = { ...cur, done: true, errorKind: "generic", message: err instanceof Error ? err.message : "Network error." };
+        let lastNetworkError: unknown = null;
+        // A dropped request or a gateway error is retried with a growing pause
+        // (lib/sync-loop NETWORK_RETRY_DELAYS_MS explains why that is safe).
+        for (let attempt = 0; ; attempt++) {
+          try {
+            // batch=1: this loop posts ONE aggregate row to /api/sync-run when it
+            // finishes, so the route must not also write a row per workout.
+            const res = await fetch("/api/sync-one?live=1&batch=1", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ live: 1 }),
+            });
+            httpStatus = res.status;
+            result = (await res.json().catch(() => ({}))) as SyncOneLike;
+            lastNetworkError = null;
+            if (!isRetryableStatus(httpStatus)) break;
+          } catch (err) {
+            lastNetworkError = err;
+          }
+          if (attempt >= NETWORK_RETRY_DELAYS_MS.length || stopRef.current) break;
+          setRetryNote(`Connection hiccup, retrying (${attempt + 1}/${NETWORK_RETRY_DELAYS_MS.length})…`);
+          await waitUntilVisible();
+          await new Promise((r) => setTimeout(r, NETWORK_RETRY_DELAYS_MS[attempt]));
+        }
+        setRetryNote(null);
+        if (stopRef.current && (lastNetworkError || isRetryableStatus(httpStatus))) {
+          cur = { ...cur, done: true, message: `Paused after ${cur.synced + cur.skipped} workout(s).` };
+          setState(cur);
+          break;
+        }
+        if (lastNetworkError) {
+          cur = { ...cur, done: true, errorKind: "generic", message: networkGiveUpMessage(lastNetworkError) };
           setState(cur);
           break;
         }
@@ -169,6 +210,7 @@ export function SyncLoop({
             <span>Synced: <span className="font-semibold text-success">{state.synced}</span></span>
             {state.skipped > 0 && <span>Skipped: <span className="font-semibold text-text-muted">{state.skipped}</span></span>}
             {running && state.currentTitle && <span className="text-text-muted">· {state.currentTitle}…</span>}
+            {running && retryNote && <span className="text-warm">· {retryNote}</span>}
           </div>
           {state.done && state.message && (
             <p className={`mt-2 text-xs ${state.errorKind ? "text-danger" : "text-text-secondary"}`} role={state.errorKind ? "alert" : undefined}>

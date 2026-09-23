@@ -122,3 +122,19 @@ describe("error detail", () => {
     expect(state.message).toMatch(/timed out \(504\)/);
   });
 });
+
+describe("network retries", () => {
+  it("retries gateway errors, not real answers", async () => {
+    const { isRetryableStatus } = await import("./sync-loop");
+    expect([502, 503, 504].every(isRetryableStatus)).toBe(true);
+    expect([200, 400, 401, 409, 423, 500].some(isRetryableStatus)).toBe(false);
+  });
+
+  it("gives up with the browser's own words and how to continue", async () => {
+    const { networkGiveUpMessage, NETWORK_RETRY_DELAYS_MS } = await import("./sync-loop");
+    const msg = networkGiveUpMessage(new TypeError("Load failed"));
+    expect(msg).toContain("(Load failed)");
+    expect(msg).toContain(`${NETWORK_RETRY_DELAYS_MS.length} retries`);
+    expect(msg).toMatch(/continues where it stopped/);
+  });
+});

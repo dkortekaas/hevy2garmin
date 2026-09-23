@@ -141,3 +141,32 @@ export function errorHint(kind: ErrorKind): string {
       return "Something went wrong during the sync.";
   }
 }
+
+/**
+ * Waits before retrying one /api/sync-one call that never got a usable answer.
+ *
+ * The run used to end at the first such failure. On a phone that is most runs:
+ * Safari reports a dropped request as "Load failed" when the screen locks, the
+ * app goes to the background or the connection blips, and a long backlog gives
+ * all of those time to happen (the report was 14 of 79 workouts, then stop).
+ *
+ * Retrying is safe because the server never uploads a workout twice: a synced
+ * workout is in the ledger, and one whose upload was mid-flight when the answer
+ * got lost is claimed in pending_uploads, so the next call moves on to another
+ * workout or finishes the claimed one through recovery.
+ */
+export const NETWORK_RETRY_DELAYS_MS = [2_000, 5_000, 10_000, 20_000] as const;
+
+/**
+ * A gateway error the platform returns without a JSON body: the function timed
+ * out or was restarted. Same reasoning as a dropped request, same retry.
+ */
+export function isRetryableStatus(httpStatus: number): boolean {
+  return httpStatus === 502 || httpStatus === 503 || httpStatus === 504;
+}
+
+/** The message for a run that gave up on the network, with the browser's own words. */
+export function networkGiveUpMessage(err: unknown): string {
+  const detail = err instanceof Error ? err.message : String(err ?? "");
+  return `Lost the connection to the server${detail ? ` (${detail})` : ""} and ${NETWORK_RETRY_DELAYS_MS.length} retries did not help. Keep this page open and in front, then click Sync all again: it continues where it stopped.`;
+}
