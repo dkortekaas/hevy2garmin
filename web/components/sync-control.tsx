@@ -60,7 +60,7 @@ export function SyncControl({ stopped, stoppedAt }: { stopped: boolean; stoppedA
   return (
     <section
       data-testid="sync-control"
-      className={`mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4 ${
+      className={`mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4 ${
         stopped ? "border-danger/40 bg-danger/10" : "border-border bg-surface-elevated"
       }`}
     >

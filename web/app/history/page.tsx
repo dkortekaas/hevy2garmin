@@ -110,7 +110,7 @@ export default async function HistoryPage() {
   const data = await loadHistory();
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-8 md:px-6">
+    <main className="mx-auto max-w-5xl px-4 py-6 md:px-6 md:py-8">
       <header className="mb-6">
         <h1 className="text-2xl font-bold text-text">Sync history</h1>
         <p className="mt-1 text-sm text-text-secondary">

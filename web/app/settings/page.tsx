@@ -145,7 +145,7 @@ export default async function SettingsPage() {
   const numOrNull = (v: unknown): number | null => (v == null || v === "" ? null : Number(v));
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-8 md:px-6">
+    <main className="mx-auto max-w-5xl px-4 py-6 md:px-6 md:py-8">
       <header className="mb-4">
         <h1 className="text-2xl font-bold text-text">Settings</h1>
         <p className="mt-1 text-sm text-text-secondary">

@@ -4,8 +4,6 @@ import { loadImportSummary } from "@/lib/imported-workouts";
 import { loadSyncControl, RUNNING, type SyncControl as SyncControlState } from "@/lib/sync-control";
 import { SyncControl } from "@/components/sync-control";
 import { SyncPanel } from "@/components/sync-panel";
-import { SyncLoop } from "@/components/sync-loop";
-import { BatchSync } from "@/components/batch-sync";
 import { AutoSyncToggle } from "@/components/autosync-toggle";
 import { PipelineDiagram } from "@/components/pipeline-diagram";
 import { HEVY_TO_GARMIN } from "hevy2garmin";
@@ -198,15 +196,15 @@ function ConnectionBadge({
   detail?: string;
 }) {
   return (
-    <div className="flex items-center gap-2 rounded-lg bg-surface px-4 py-3 border border-border">
+    <div className="flex min-w-0 items-center gap-2 rounded-lg bg-surface px-3 py-2.5 border border-border md:px-4 md:py-3">
       <span
-        className={`inline-block h-2.5 w-2.5 rounded-full ${
+        className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${
           connected ? "bg-success" : "bg-danger"
         }`}
         aria-hidden
       />
-      <div className="flex flex-col leading-tight">
-        <span className="text-sm font-medium text-text">{label}</span>
+      <div className="flex min-w-0 flex-col leading-tight">
+        <span className="truncate text-sm font-medium text-text">{label}</span>
         <span className={`text-xs ${connected ? "text-success" : "text-text-muted"}`}>
           {connected ? (detail ?? "Connected") : "Not connected"}
         </span>
@@ -225,9 +223,9 @@ function StatCard({
   accent: string;
 }) {
   return (
-    <div className="rounded-xl bg-surface-elevated border border-border p-5">
-      <div className="text-xs uppercase tracking-wide text-text-muted">{label}</div>
-      <div className={`mt-1 text-3xl font-bold ${accent}`}>{value}</div>
+    <div className="rounded-xl bg-surface-elevated border border-border p-3 md:p-5">
+      <div className="text-[11px] uppercase tracking-wide text-text-muted md:text-xs">{label}</div>
+      <div className={`mt-1 text-2xl font-bold tabular-nums md:text-3xl ${accent}`}>{value}</div>
     </div>
   );
 }
@@ -265,7 +263,7 @@ export default async function DashboardPage() {
           : null;
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-8 md:px-6">
+    <main className="mx-auto max-w-5xl px-4 py-6 md:px-6 md:py-8">
       <header className="mb-6">
         <h1 className="text-2xl font-bold text-text">Sync status</h1>
         <p className="mt-1 text-sm text-text-secondary">
@@ -280,7 +278,7 @@ export default async function DashboardPage() {
       )}
 
       {/* Connection badges */}
-      <section className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <section className="mb-6 grid grid-cols-2 gap-2 md:gap-3">
         <ConnectionBadge
           label="Hevy"
           connected={data.hevyConnected}
@@ -308,7 +306,7 @@ export default async function DashboardPage() {
       )}
 
       {/* Stat cards */}
-      <section className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <section className="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-3 md:mb-8 md:gap-3">
         <StatCard label="On Garmin" value={data.totalSynced} accent="text-teal" />
         <StatCard label="Marked synced" value={data.markedSynced} accent="text-warm" />
         <StatCard label="Skipped" value={data.skipped} accent="text-text-muted" />
@@ -318,7 +316,7 @@ export default async function DashboardPage() {
       </section>
 
       {data.routinesSynced > 0 && (
-        <section className="mb-8">
+        <section className="mb-6 md:mb-8">
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface-elevated p-4">
             <div>
               <h3 className="text-sm font-semibold text-text">Routines</h3>
@@ -347,21 +345,15 @@ export default async function DashboardPage() {
         </p>
       )}
       <SyncPanel ready={syncReady} blockedReason={syncBlockedReason} />
-      <div className="mt-3">
-        <SyncLoop ready={syncReady} blockedReason={syncBlockedReason} />
-      </div>
-      <div className="mt-3">
-        <BatchSync ready={syncReady} blockedReason={syncBlockedReason} />
-      </div>
 
-      <div className="mb-8">
+      <div className="mb-6 md:mb-8">
         <AutoSyncToggle enabled={data.autoSyncEnabled} interval={data.autoSyncInterval} />
       </div>
 
       <PipelineDiagram mappingCount={Object.keys(HEVY_TO_GARMIN).length} />
 
       {/* Recent synced workouts */}
-      <section className="mb-8">
+      <section className="mb-6 md:mb-8">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-text">Recent workouts</h2>
           {data.recent.length > 0 && (
