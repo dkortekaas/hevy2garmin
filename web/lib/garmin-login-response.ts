@@ -4,12 +4,13 @@ import { GARMIN_TOKEN_PLATFORM, resetGarminClient } from "@/lib/garmin-upload";
 import { tokensFromResult, type WorkerLoginResult } from "@/lib/garmin-login-worker";
 import { clearCooldown } from "@/lib/garmin-cooldown";
 import { getDb } from "@/lib/db";
+import { pgConnectionString } from "@/lib/database-url";
 
 /** Persist the DI tokens (nested {garmin_tokens:{...}}) for the sync engine. */
 async function persist(url: string, result: WorkerLoginResult): Promise<void> {
   const tokens = tokensFromResult(result);
   if (!tokens) throw new Error("Login succeeded but no DI tokens were returned.");
-  const store = new DBTokenStore(url, GARMIN_TOKEN_PLATFORM);
+  const store = new DBTokenStore(pgConnectionString(url), GARMIN_TOKEN_PLATFORM);
   await store.save(tokens);
   resetGarminClient();
 }
