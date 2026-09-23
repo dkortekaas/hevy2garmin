@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { loadGarminConnection, loadHevyConnection } from "./connections";
+import { hevySource, loadGarminConnection, loadHevyConnection, type HevyConnection } from "./connections";
 
 type Sql = Parameters<typeof loadGarminConnection>[0];
 
@@ -74,12 +74,13 @@ describe("loadHevyConnection", () => {
     const r = await loadHevyConnection(
       fakeSql([{ status: "active", connected_at: "2026-09-01T00:00:00Z" }]),
     );
-    expect(r).toEqual({ connected: true, connectedAt: "2026-09-01T00:00:00Z" });
+    expect(r).toEqual({ connected: true, connectedAt: "2026-09-01T00:00:00Z", disconnected: false });
   });
 
   it("treats an explicit disconnected status as disconnected", async () => {
     const r = await loadHevyConnection(fakeSql([{ status: "disconnected", connected_at: null }]));
     expect(r.connected).toBe(false);
+    expect(r.disconnected).toBe(true);
   });
 
   it("is disconnected when no row exists", async () => {
@@ -88,5 +89,30 @@ describe("loadHevyConnection", () => {
 
   it("degrades to disconnected when the table is missing", async () => {
     expect((await loadHevyConnection(throwingSql())).connected).toBe(false);
+  });
+});
+
+describe("hevySource (the dashboard badge)", () => {
+  const none: HevyConnection = { connected: false, connectedAt: null, disconnected: false };
+  const disconnected: HevyConnection = { ...none, disconnected: true };
+  const active: HevyConnection = { connected: true, connectedAt: null, disconnected: false };
+  const base = { envKey: false, importCount: 0, hasSynced: false };
+
+  it("is api with a saved key or an environment key", () => {
+    expect(hevySource({ ...base, connection: active })).toBe("api");
+    expect(hevySource({ ...base, connection: disconnected, envKey: true })).toBe("api");
+  });
+
+  it("is csv with only imported workouts", () => {
+    expect(hevySource({ ...base, connection: disconnected, importCount: 3 })).toBe("csv");
+  });
+
+  it("keeps the old-database fallback only when no row was ever written", () => {
+    expect(hevySource({ ...base, connection: none, hasSynced: true })).toBe("history");
+  });
+
+  it("is none after Disconnect Hevy, synced workouts or not", () => {
+    expect(hevySource({ ...base, connection: disconnected, hasSynced: true })).toBe("none");
+    expect(hevySource({ ...base, connection: none })).toBe("none");
   });
 });

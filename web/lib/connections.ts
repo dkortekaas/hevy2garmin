@@ -41,17 +41,53 @@ export async function loadGarminConnection(sql: Sql): Promise<Connection> {
   return { connected: true, connectedAt: row.connected_at ?? null };
 }
 
+export interface HevyConnection extends Connection {
+  /**
+   * The row exists and says 'disconnected': the user pressed Disconnect Hevy, or Hevy rejected
+   * the key (#605). Unlike a missing row, this is a statement that Hevy is NOT connected, so no
+   * fallback may paint it green.
+   */
+  disconnected: boolean;
+}
+
 /**
  * Hevy is connected when its credential row exists and is not explicitly disconnected. The
  * setup form writes status='active', so testing for the literal 'connected' never matches.
  */
-export async function loadHevyConnection(sql: Sql): Promise<Connection> {
+export async function loadHevyConnection(sql: Sql): Promise<HevyConnection> {
   const rows = await sql`
     SELECT status, connected_at
     FROM platform_credentials
     WHERE platform = 'hevy'
   `.catch(() => [] as Array<{ status: string | null; connected_at: string | null }>);
   const row = rows[0];
-  if (!row || row.status === "disconnected") return DISCONNECTED;
-  return { connected: true, connectedAt: row.connected_at ?? null };
+  if (!row) return { ...DISCONNECTED, disconnected: false };
+  if (row.status === "disconnected") return { ...DISCONNECTED, disconnected: true };
+  return { connected: true, connectedAt: row.connected_at ?? null, disconnected: false };
+}
+
+/**
+ * Where the dashboard's Hevy badge gets its workouts from.
+ *
+ *   api      a saved key, or HEVY_API_KEY in the environment (which the sync uses too)
+ *   csv      no key, but workouts imported from a Hevy CSV export
+ *   history  no credential row at all, but synced workouts: a database from an older build
+ *            that never wrote the row. Never after an explicit disconnect.
+ *   none     not connected
+ *
+ * `history` used to be unconditional, so a user who pressed Disconnect Hevy still saw
+ * "Connected" for as long as they had any synced workout.
+ */
+export type HevySource = "api" | "csv" | "history" | "none";
+
+export function hevySource(o: {
+  connection: HevyConnection;
+  envKey: boolean;
+  importCount: number;
+  hasSynced: boolean;
+}): HevySource {
+  if (o.connection.connected || o.envKey) return "api";
+  if (o.importCount > 0) return "csv";
+  if (o.hasSynced && !o.connection.disconnected) return "history";
+  return "none";
 }

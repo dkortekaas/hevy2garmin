@@ -72,8 +72,8 @@ export async function POST(request: Request) {
 /**
  * DELETE /api/connect-hevy
  *
- * Disconnects Hevy: removes the stored API key (platform_credentials row
- * 'hevy'). The sync history and any CSV-imported workouts are kept, so
+ * Disconnects Hevy: removes the stored API key and marks the platform_credentials
+ * row 'hevy' disconnected. The sync history and any CSV-imported workouts are kept, so
  * reconnecting later does not upload anything a second time. A key set in the
  * HEVY_API_KEY environment variable cannot be removed from here; the response
  * says so, because the app would otherwise keep using it silently.
@@ -95,7 +95,17 @@ export async function DELETE() {
   }
 
   try {
-    await sql`DELETE FROM platform_credentials WHERE platform = 'hevy'`;
+    // Kept as a row with status 'disconnected' and no key, rather than deleted: a missing
+    // row is what a database from an older build looks like, and the dashboard treats that
+    // as connected when there is sync history. This row says "disconnected" outright.
+    await sql`
+      INSERT INTO platform_credentials (platform, auth_type, credentials, status, connected_at)
+      VALUES ('hevy', 'api_key', ${sql.json({})}, 'disconnected', NULL)
+      ON CONFLICT (platform) DO UPDATE SET
+        credentials = EXCLUDED.credentials,
+        status = 'disconnected',
+        connected_at = NULL
+    `;
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ ok: false, error: `Could not remove the key: ${error}` }, { status: 500 });

@@ -396,6 +396,12 @@ The dashboard has a **Stop all syncing** button. It sets one switch in the datab
 
 **Disconnect Hevy** on the Setup page removes the saved Hevy API key. Your sync history and any CSV-imported workouts are kept, so reconnecting later never uploads a workout twice. If `HEVY_API_KEY` is set as an environment variable, the app keeps using that key; remove it from your host's environment too.
 
+## Deleting all workouts
+
+**Settings → Danger zone → Delete all workouts** removes every workout record the app holds, whether it came from the Hevy API or a CSV import: the sync history, in-flight uploads, imported workouts and cached heart rate. Type `DELETE` to confirm. Garmin activities and your Hevy account are not touched; the sync log, settings and connections stay.
+
+This also turns on **Stop all syncing** and leaves it on. Without the sync history every Hevy workout looks unsynced again while its activity is still on Garmin, so the next sync would upload your whole history a second time. Resume on the dashboard once that is what you want (for example after clearing Garmin, or after importing a CSV with an **Only workouts from** date).
+
 ## Activity Description
 
 When hevy2garmin syncs a workout, it adds a text description to the Garmin activity summarizing your session:

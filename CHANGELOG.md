@@ -8,6 +8,14 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Web: **Delete all workouts** in the Settings danger zone (`POST /api/delete-all-workouts`, `confirm: "DELETE"`). Clears synced, in-flight and CSV-imported workouts and cached heart rate from the app only; Garmin and Hevy are untouched. Stops all syncing first and leaves it stopped, so the next sync cannot re-upload the whole history as duplicates.
+
+### Fixed
+
+- Web: the dashboard kept showing Hevy as "Connected" after **Disconnect Hevy** whenever there were synced workouts or imported CSV workouts. Disconnect now marks the credential row `disconnected` (instead of deleting it), sync history only counts as connected for databases that never had a credential row, and a CSV-only setup shows "CSV import" on the badge.
+
+### Added
+
 - Web: **Stop all syncing** on the dashboard. One switch (app_cache `sync_control`) that every upload path checks: the dashboard buttons, `/api/sync`, the cron and webhook routes, routine sync and scheduling, and the Python CLI run by GitHub Actions. Running loops end at their next workout; stopping also turns auto-sync off, removes the Actions workflow and cancels queued or running runs. **Resume syncing** clears it; dry runs stay allowed.
 - Web: **Disconnect Hevy** on the Setup page (`DELETE /api/connect-hevy`) removes the saved API key and keeps sync history and imported workouts. Warns when `HEVY_API_KEY` in the environment keeps the connection alive.
 

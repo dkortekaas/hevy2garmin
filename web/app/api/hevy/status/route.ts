@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import { loadGarminConnection, loadHevyConnection } from "@/lib/connections";
+import { hevySource, loadGarminConnection, loadHevyConnection } from "@/lib/connections";
 import { loadImportSummary } from "@/lib/imported-workouts";
 
 // Reads the live hevy2garmin Postgres at request time — never at build.
@@ -57,7 +57,13 @@ export async function GET() {
     loadImportSummary(sql),
   ]);
   // A Hevy CSV import counts: it is how an account without Hevy Pro syncs.
-  const hevyConnected = hevyConn.connected || hevyImport.count > 0;
+  const hevyConnected =
+    hevySource({
+      connection: hevyConn,
+      envKey: Boolean(process.env.HEVY_API_KEY?.trim()),
+      importCount: hevyImport.count,
+      hasSynced: false,
+    }) !== "none";
   const garminConnected = garminConn.connected;
 
   // Aggregate counts over synced_workouts (success terminal state only).
