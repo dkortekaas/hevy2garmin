@@ -17,7 +17,7 @@
  */
 import { getDb } from "./db";
 import { GarminAuth, DBTokenStore, type GarminClient } from "garmin-auth";
-import { resolveDatabaseUrl } from "./database-url";
+import { pgConnectionString, resolveDatabaseUrl } from "./database-url";
 
 /** The DI tokens live in platform_credentials at this platform key. */
 export const GARMIN_TOKEN_PLATFORM = "garmin_tokens";
@@ -58,7 +58,7 @@ export async function getGarminClient(databaseUrl?: string): Promise<GarminClien
   const url = databaseUrl ?? resolveDatabaseUrl();
   if (!url) throw new Error("DATABASE_URL not set (cannot load Garmin tokens)");
   try { await normalizeGarminTokenRow(getDb()); } catch { /* no DB handle: DBTokenStore reports it */ }
-  const store = new DBTokenStore(url, GARMIN_TOKEN_PLATFORM);
+  const store = new DBTokenStore(pgConnectionString(url), GARMIN_TOKEN_PLATFORM);
   const auth = new GarminAuth({ store });
   cachedClient = await auth.client();
   return cachedClient;
