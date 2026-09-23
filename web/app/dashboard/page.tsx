@@ -1,6 +1,8 @@
 import { getDb } from "@/lib/db";
 import { loadGarminConnection, loadHevyConnection } from "@/lib/connections";
 import { loadImportSummary } from "@/lib/imported-workouts";
+import { loadSyncControl, RUNNING, type SyncControl as SyncControlState } from "@/lib/sync-control";
+import { SyncControl } from "@/components/sync-control";
 import { SyncPanel } from "@/components/sync-panel";
 import { SyncLoop } from "@/components/sync-loop";
 import { BatchSync } from "@/components/batch-sync";
@@ -45,6 +47,8 @@ interface DashboardData {
   syncLog: SyncLogEntry[];
   autoSyncEnabled: boolean;
   autoSyncInterval: number;
+  /** "Stop all syncing" (lib/sync-control). */
+  syncControl: SyncControlState;
 }
 
 const EMPTY: DashboardData = {
@@ -62,6 +66,7 @@ const EMPTY: DashboardData = {
   syncLog: [],
   autoSyncEnabled: false,
   autoSyncInterval: 120,
+  syncControl: RUNNING,
 };
 
 async function loadDashboard(): Promise<DashboardData> {
@@ -74,7 +79,7 @@ async function loadDashboard(): Promise<DashboardData> {
 
   // Every query is guarded so a missing/empty table degrades to a sane default
   // rather than crashing the whole page render.
-  const [hevyConn, garminConn, counts, recent, syncLog, autoSync, pendingRow, routinesRow, hevyImport] = await Promise.all([
+  const [hevyConn, garminConn, counts, recent, syncLog, autoSync, pendingRow, routinesRow, hevyImport, syncControl] = await Promise.all([
     loadHevyConnection(sql),
     loadGarminConnection(sql),
     sql`
@@ -114,6 +119,7 @@ async function loadDashboard(): Promise<DashboardData> {
       FROM synced_routines
     `.catch(() => [] as Array<{ total: number; scheduled: number }>),
     loadImportSummary(sql),
+    loadSyncControl(sql),
   ]);
 
   const autoSyncValue =
@@ -155,6 +161,7 @@ async function loadDashboard(): Promise<DashboardData> {
     })),
     autoSyncEnabled: Boolean(autoSyncValue.enabled),
     autoSyncInterval: Number(autoSyncValue.interval_minutes) || 120,
+    syncControl,
   };
 }
 
@@ -223,6 +230,8 @@ function StatusPill({ status }: { status: string }) {
 
 export default async function DashboardPage() {
   const data = await loadDashboard();
+  // "Stop all syncing" disables the sync buttons along with the uploads behind them.
+  const syncReady = data.hevyConnected && data.garminConnected && !data.syncControl.stopped;
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 md:px-6">
@@ -289,13 +298,17 @@ export default async function DashboardPage() {
         </section>
       )}
 
+      {data.dbConfigured && (
+        <SyncControl stopped={data.syncControl.stopped} stoppedAt={data.syncControl.stoppedAt} />
+      )}
+
       {/* Sync controls (preview is dry-run; live upload is gated) */}
-      <SyncPanel ready={data.hevyConnected && data.garminConnected} />
+      <SyncPanel ready={syncReady} />
       <div className="mt-3">
-        <SyncLoop ready={data.hevyConnected && data.garminConnected} />
+        <SyncLoop ready={syncReady} />
       </div>
       <div className="mt-3">
-        <BatchSync ready={data.hevyConnected && data.garminConnected} />
+        <BatchSync ready={syncReady} />
       </div>
 
       <div className="mb-8">

@@ -777,3 +777,55 @@ def test_sync_runs_duplicate_scan(mock_detect, mock_merge, mock_hevy_cls, mock_g
         )
     assert stats["duplicates"] == 1
     mock_detect.assert_called_once()
+
+
+# --- "Stop all syncing" from the web dashboard -------------------------------
+
+
+def test_sync_stopped_reads_the_dashboard_switch():
+    from hevy2garmin.sync import sync_stopped
+
+    store = MagicMock()
+    store.get_app_config.return_value = {"stopped": True, "stopped_at": "2026-09-23T10:00:00Z"}
+    assert sync_stopped(store) is True
+    store.get_app_config.return_value = {"stopped": False}
+    assert sync_stopped(store) is False
+    store.get_app_config.return_value = None
+    assert sync_stopped(store) is False
+    # A read failure must not halt syncing.
+    store.get_app_config.side_effect = RuntimeError("db down")
+    assert sync_stopped(store) is False
+
+
+@patch("hevy2garmin.sync.db")
+@patch("hevy2garmin.sync.get_client")
+@patch("hevy2garmin.sync.HevyClient")
+@patch("hevy2garmin.sync.sync_one_workout")
+def test_live_sync_ends_when_stopped(mock_one, mock_hevy_cls, mock_gclient, mock_db):
+    old = datetime.now(timezone.utc) - timedelta(days=2)
+    workout = {
+        "id": "w1",
+        "title": "Push",
+        "start_time": _iso(old),
+        "end_time": _iso(old),
+        "exercises": [],
+    }
+    h = MagicMock()
+    h.get_workout_count.return_value = 1
+    h.get_workouts.return_value = {"workouts": [workout], "page_count": 1}
+    mock_hevy_cls.return_value = h
+    mock_db.is_synced.return_value = False
+    mock_db.list_pending.return_value = []
+    mock_db.get_app_config.side_effect = lambda key: (
+        {"stopped": True} if key == "sync_control" else None
+    )
+
+    stats = sync(
+        config={"hevy_api_key": "t", "merge_mode": False},
+        limit=1,
+        respect_grace=False,
+        record_log=False,
+    )
+
+    assert stats.get("stopped") is True
+    mock_one.assert_not_called()

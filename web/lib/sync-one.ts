@@ -32,6 +32,7 @@ import { fetchAllWorkouts, type HevyWorkout } from "./hevy-sync";
 import { hrDepsFor, type HrWorkout } from "./hr-store";
 import { postgresSyncStore } from "./sync-store";
 import { loadSyncSettings } from "./sync-settings";
+import { assertSyncAllowed } from "./sync-control";
 import type { Sql } from "./pending-store";
 
 export type {
@@ -100,6 +101,10 @@ export function listCandidates(sql: Sql, options: SyncOneOptions = {}) {
  */
 export async function syncOneWorkout(sql: Sql, options: SyncOneOptions = {}) {
   const { fetchWorkouts: _f, garminClientFactory: _g, ...engineOptions } = options;
+  // The "stop all syncing" switch (lib/sync-control). Checked here because every
+  // live upload passes through this call, so a running loop stops at its next
+  // workout. Dry runs never touch Garmin and stay allowed.
+  if (options.dryRun === false) await assertSyncAllowed(sql);
   const saved = await loadSyncSettings(sql);
   return engineSyncOneWorkout(buildSyncDeps(sql, options), {
     merge: saved.merge,

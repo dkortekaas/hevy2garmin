@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { fetchWorkoutCount } from "@/lib/hevy-sync";
+import { cookies } from "next/headers";
 import { getDb } from "@/lib/db";
+import { verifySession, SESSION_COOKIE, authEnabled } from "@/lib/auth";
 
 // Probes the live Hevy API and writes platform_credentials at request time.
 export const dynamic = "force-dynamic";
@@ -65,4 +67,46 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ ok: true, valid: true, workout_count: workoutCount });
+}
+
+/**
+ * DELETE /api/connect-hevy
+ *
+ * Disconnects Hevy: removes the stored API key (platform_credentials row
+ * 'hevy'). The sync history and any CSV-imported workouts are kept, so
+ * reconnecting later does not upload anything a second time. A key set in the
+ * HEVY_API_KEY environment variable cannot be removed from here; the response
+ * says so, because the app would otherwise keep using it silently.
+ */
+export async function DELETE() {
+  if (authEnabled()) {
+    const store = await cookies();
+    if (!(await verifySession(store.get(SESSION_COOKIE)?.value ?? null))) {
+      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+    }
+  }
+
+  let sql: ReturnType<typeof getDb>;
+  try {
+    sql = getDb();
+  } catch (err) {
+    const error = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ ok: false, error: `DB unavailable: ${error}` }, { status: 503 });
+  }
+
+  try {
+    await sql`DELETE FROM platform_credentials WHERE platform = 'hevy'`;
+  } catch (err) {
+    const error = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ ok: false, error: `Could not remove the key: ${error}` }, { status: 500 });
+  }
+
+  const envKey = Boolean(process.env.HEVY_API_KEY?.trim());
+  return NextResponse.json({
+    ok: true,
+    envKeyStillSet: envKey,
+    ...(envKey
+      ? { warning: "The saved key is removed, but HEVY_API_KEY is set in the environment and is still used. Remove it there too." }
+      : {}),
+  });
 }

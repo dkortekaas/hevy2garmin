@@ -15,7 +15,10 @@ const sqlTag = vi.fn((..._a: unknown[]) => Promise.resolve([] as unknown[]));
 const sqlObj = Object.assign(sqlTag, { json: (o: unknown) => o });
 vi.mock("@/lib/db", () => ({ getDb: () => sqlObj }));
 
-import { POST } from "./route";
+vi.mock("@/lib/auth", () => ({ authEnabled: () => false, verifySession: async () => true, SESSION_COOKIE: "s" }));
+vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined }) }));
+
+import { POST, DELETE } from "./route";
 
 function req(body: unknown): Request {
   return new Request("http://h/api/connect-hevy", {
@@ -68,5 +71,29 @@ describe("POST /api/connect-hevy", () => {
     const res = await POST(bad);
     expect(res.status).toBe(400);
     expect(fetchWorkoutCount).not.toHaveBeenCalled();
+  });
+});
+
+describe("DELETE /api/connect-hevy (disconnect)", () => {
+  it("removes the saved Hevy key and nothing else", async () => {
+    delete process.env.HEVY_API_KEY;
+    const res = await DELETE();
+    const json = await res.json();
+    expect(res.status).toBe(200);
+    expect(json).toMatchObject({ ok: true, envKeyStillSet: false });
+    expect(sqlTag).toHaveBeenCalledTimes(1);
+    const text = (sqlTag.mock.calls[0][0] as unknown as TemplateStringsArray).join("?");
+    expect(text).toContain("DELETE FROM platform_credentials WHERE platform = 'hevy'");
+  });
+
+  it("warns when HEVY_API_KEY in the environment keeps Hevy connected", async () => {
+    process.env.HEVY_API_KEY = "from-env";
+    try {
+      const json = await (await DELETE()).json();
+      expect(json.envKeyStillSet).toBe(true);
+      expect(json.warning).toMatch(/HEVY_API_KEY/);
+    } finally {
+      delete process.env.HEVY_API_KEY;
+    }
   });
 });

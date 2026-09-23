@@ -23,6 +23,7 @@ import {
   type GarminLibraryWorkout,
 } from "./garmin-workout-library";
 import { getDb } from "./db";
+import { assertSyncAllowed } from "./sync-control";
 
 type Sql = ReturnType<typeof getDb>;
 
@@ -46,6 +47,7 @@ export async function syncRoutine(
   opts: Opts = {},
 ): Promise<RoutineSyncResult> {
   try {
+    await assertSyncAllowed(sql);
     const client = await (opts.garminClientFactory ?? (() => getGarminClient()))();
     const payload = routineToGarminWorkout(routine, opts);
     const hevyId = String(routine.id);
@@ -190,6 +192,7 @@ export async function scheduleRoutine(
   opts: { garminClientFactory?: () => Promise<GarminClient> } = {},
 ): Promise<RoutineScheduleResult> {
   try {
+    await assertSyncAllowed(sql);
     const client = await (opts.garminClientFactory ?? (() => getGarminClient()))();
     const res = await client.post<{ workoutScheduleId?: number }>(
       `/workout-service/schedule/${garminWorkoutId}`,
