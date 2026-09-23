@@ -33,7 +33,9 @@ export function PipelineDiagram({ mappingCount }: { mappingCount?: number }) {
   const mapSub = `${(mappingCount ?? 433).toLocaleString()} mappings`;
 
   return (
-    <section className="mb-8 rounded-xl border border-border bg-surface-elevated p-4">
+    // Hidden on phones: the diagram is 852 units wide, so at phone width it either
+    // scrolls sideways or shrinks its labels past reading. It explains, it does not act.
+    <section className="mb-8 hidden rounded-xl border border-border bg-surface-elevated p-4 md:block">
       <div className="mb-3 flex items-center gap-2">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-muted" aria-hidden="true">
           <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />

@@ -282,7 +282,7 @@ To sync newer workouts later, export again and upload the new file. Every import
 
 Things to know:
 
-- Imported workouts sync from the dashboard (**Sync now**, the per-workout **Sync** button, **Sync all**) and from the Vercel cron (`/api/cron/sync`). The GitHub Actions auto-sync still runs the Python CLI, which only reads the Hevy API and does not see imported workouts.
+- Imported workouts sync from the dashboard (**Sync next**, **Sync all**, the per-workout **Sync** button) and from the Vercel cron (`/api/cron/sync`). The GitHub Actions auto-sync still runs the Python CLI, which only reads the Hevy API and does not see imported workouts.
 - Without an API key, new workouts only become available after your next upload.
 - The export has no Hevy exercise ids, so exercises are matched by name. Hevy set up in a language other than English can leave more exercises unmapped; add those on the **Mappings** page.
 - **Remove imported workouts** on the Setup page clears the import. Workouts already synced stay on Garmin and stay marked as synced.

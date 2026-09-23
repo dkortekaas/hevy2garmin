@@ -38,9 +38,10 @@ test.describe("dashboard smoke (no database, password auth)", () => {
   test("every nav destination is reachable by clicking the nav", async ({ page }) => {
     // goto() proves a route renders; it says nothing about whether a user can
     // get there. Walk the nav itself so a broken Link, a wrong href or a nav
-    // that fails to render is caught. Both bars carry the same seven items and
+    // that fails to render is caught. Both bars reach the same seven pages and
     // CSS shows exactly one, so scope to the visible nav to stay correct on the
-    // desktop and mobile projects alike.
+    // desktop and mobile projects alike. The mobile bar keeps four tabs and puts
+    // the rest under "More", so open that first when the link is not showing.
     await page.goto("/login");
     await signIn(page, "test-pw");
     await expect(page).toHaveURL(/\/dashboard/);
@@ -56,14 +57,11 @@ test.describe("dashboard smoke (no database, password auth)", () => {
     ];
 
     for (const [label, path] of destinations) {
-      // Not an exact name match: the mobile bar composes each link from an icon
-      // span and a label span, so its accessible name is "≡ Workouts" while the
-      // desktop bar's is "Workouts". Substring matching covers both, and no two
-      // labels are substrings of one another.
-      await page
-        .locator("nav:visible")
-        .getByRole("link", { name: label })
-        .click();
+      const link = page.locator("nav:visible").getByRole("link", { name: label, exact: true });
+      if (!(await link.isVisible())) {
+        await page.locator("nav:visible").getByRole("button", { name: "More" }).click();
+      }
+      await link.click();
       await expect(page, `nav "${label}" should land on ${path}`).toHaveURL(
         new RegExp(`${path}$`),
       );

@@ -6,6 +6,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Web dashboard: the three overlapping sync cards ("Run a sync", "Sync all" and "Sync everything") are now one **Sync to Garmin** card with **Preview**, **Sync next** and **Sync all**. The removed "Sync everything" button triggered the GitHub Action, which does not see CSV-imported workouts; **Sync all** runs the per-workout loop with live progress and does.
+- Web on mobile: the bottom bar shows four tabs plus **More** (Mappings, Settings, Setup, Log out) instead of eight items that ran off the screen, with SVG icons in place of Unicode glyphs. Pages, stat cards and the connection badges are tighter on small screens, and the pipeline diagram is hidden on phones.
+
 ### Fixed
 
 - Web: **Sync all** showed only "Something went wrong during the sync." on an unrecognised error. It now also shows the server's message, prefixed with the workout that failed, and explains a 504 timeout page.

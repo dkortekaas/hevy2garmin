@@ -20,7 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className="dark">
       <body className="bg-base text-text min-h-screen antialiased">
         <NavBar authEnabled={authEnabled()} />
-        <div className="pb-20 md:pb-0">{children}</div>
+        <div className="pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">{children}</div>
       </body>
     </html>
   );

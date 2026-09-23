@@ -85,7 +85,7 @@ function StatusDot({
    (#550), so the connect forms would only fail. Say what to do instead. */
 function SetPasswordFirst() {
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8 md:px-6">
+    <main className="mx-auto max-w-3xl px-4 py-6 md:px-6 md:py-8">
       <header className="mb-6">
         <h1 className="text-2xl font-bold text-text">Set a password first</h1>
         <p className="mt-1 text-sm text-text-secondary">
@@ -127,7 +127,7 @@ export default async function SetupPage() {
   const garminConnected = data.garmin.connected;
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8 md:px-6">
+    <main className="mx-auto max-w-3xl px-4 py-6 md:px-6 md:py-8">
       <header className="mb-6">
         <h1 className="text-2xl font-bold text-text">Setup</h1>
         <p className="mt-1 text-sm text-text-secondary">
