@@ -103,3 +103,22 @@ describe("loopPercent", () => {
     expect(loopPercent(initialLoopState)).toBe(0);
   });
 });
+
+describe("error detail", () => {
+  it("names the failing workout and keeps the server's message", async () => {
+    const { stepLoop, initialLoopState } = await import("./sync-loop");
+    const { state, cont } = stepLoop(initialLoopState, {
+      httpStatus: 200,
+      result: { status: "error", error: "Garmin upload failed: 429", workout: { title: "Legs" } },
+    });
+    expect(cont).toBe(false);
+    expect(state.errorKind).toBe("generic");
+    expect(state.message).toBe("Legs: Garmin upload failed: 429");
+  });
+
+  it("explains a timeout page that carried no JSON", async () => {
+    const { stepLoop, initialLoopState } = await import("./sync-loop");
+    const { state } = stepLoop(initialLoopState, { httpStatus: 504, result: {} });
+    expect(state.message).toMatch(/timed out \(504\)/);
+  });
+});

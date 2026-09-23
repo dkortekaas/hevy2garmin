@@ -175,6 +175,13 @@ export function SyncLoop({
               {state.errorKind ? errorHint(state.errorKind) : state.message}
             </p>
           )}
+          {/* The hint alone ("Something went wrong") gave nothing to act on; the
+              server's own message says which workout and what Garmin answered. */}
+          {state.done && state.errorKind && state.message && state.message !== errorHint(state.errorKind) && (
+            <p className="mt-1 break-words text-xs text-text-muted" data-testid="sync-error-detail">
+              {state.message}
+            </p>
+          )}
         </div>
       )}
     </div>
