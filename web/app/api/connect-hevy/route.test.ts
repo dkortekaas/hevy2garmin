@@ -83,7 +83,10 @@ describe("DELETE /api/connect-hevy (disconnect)", () => {
     expect(json).toMatchObject({ ok: true, envKeyStillSet: false });
     expect(sqlTag).toHaveBeenCalledTimes(1);
     const text = (sqlTag.mock.calls[0][0] as unknown as TemplateStringsArray).join("?");
-    expect(text).toContain("DELETE FROM platform_credentials WHERE platform = 'hevy'");
+    expect(text).toContain("INSERT INTO platform_credentials");
+    expect(text).toContain("status = 'disconnected'");
+    // The key is gone: the credentials written are empty.
+    expect(sqlTag.mock.calls[0][1]).toEqual({});
   });
 
   it("warns when HEVY_API_KEY in the environment keeps Hevy connected", async () => {

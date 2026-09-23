@@ -1,5 +1,5 @@
 import { getDb } from "@/lib/db";
-import { loadGarminConnection, loadHevyConnection } from "@/lib/connections";
+import { hevySource, loadGarminConnection, loadHevyConnection, type HevySource } from "@/lib/connections";
 import { loadImportSummary } from "@/lib/imported-workouts";
 import { loadSyncControl, RUNNING, type SyncControl as SyncControlState } from "@/lib/sync-control";
 import { SyncControl } from "@/components/sync-control";
@@ -35,6 +35,8 @@ interface SyncLogEntry {
 interface DashboardData {
   dbConfigured: boolean;
   hevyConnected: boolean;
+  /** Where Hevy workouts come from; drives the badge text. */
+  hevySource: HevySource;
   garminConnected: boolean;
   totalSynced: number;
   syncedThisWeek: number;
@@ -54,6 +56,7 @@ interface DashboardData {
 const EMPTY: DashboardData = {
   dbConfigured: false,
   hevyConnected: false,
+  hevySource: "none",
   garminConnected: false,
   totalSynced: 0,
   syncedThisWeek: 0,
@@ -122,6 +125,13 @@ async function loadDashboard(): Promise<DashboardData> {
     loadSyncControl(sql),
   ]);
 
+  const hevyState = hevySource({
+    connection: hevyConn,
+    envKey: Boolean(process.env.HEVY_API_KEY?.trim()),
+    importCount: hevyImport.count,
+    hasSynced: recent.length > 0,
+  });
+
   const autoSyncValue =
     autoSync[0]?.value && typeof autoSync[0].value === "object"
       ? (autoSync[0].value as Record<string, unknown>)
@@ -129,10 +139,10 @@ async function loadDashboard(): Promise<DashboardData> {
 
   return {
     dbConfigured: true,
-    // See lib/connections.ts for which row means what. The `recent` fallbacks keep a user who
-    // synced under an older build showing as connected even if their credential row is odd.
-    // A Hevy CSV import is a source on its own, for accounts without Hevy Pro.
-    hevyConnected: hevyConn.connected || recent.length > 0 || hevyImport.count > 0,
+    // See lib/connections.ts for which row means what, and hevySource for why sync history
+    // only counts when no credential row was ever written.
+    hevyConnected: hevyState !== "none",
+    hevySource: hevyState,
     garminConnected:
       garminConn.connected || recent.some((r) => r.garmin_activity_id != null),
     totalSynced: counts[0]?.total ?? 0,
@@ -177,7 +187,16 @@ function fmtDate(value: string | null): string {
   });
 }
 
-function ConnectionBadge({ label, connected }: { label: string; connected: boolean }) {
+function ConnectionBadge({
+  label,
+  connected,
+  detail,
+}: {
+  label: string;
+  connected: boolean;
+  /** Replaces "Connected", e.g. "CSV import" when Hevy has no API key. */
+  detail?: string;
+}) {
   return (
     <div className="flex items-center gap-2 rounded-lg bg-surface px-4 py-3 border border-border">
       <span
@@ -189,7 +208,7 @@ function ConnectionBadge({ label, connected }: { label: string; connected: boole
       <div className="flex flex-col leading-tight">
         <span className="text-sm font-medium text-text">{label}</span>
         <span className={`text-xs ${connected ? "text-success" : "text-text-muted"}`}>
-          {connected ? "Connected" : "Not connected"}
+          {connected ? (detail ?? "Connected") : "Not connected"}
         </span>
       </div>
     </div>
@@ -250,7 +269,11 @@ export default async function DashboardPage() {
 
       {/* Connection badges */}
       <section className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <ConnectionBadge label="Hevy" connected={data.hevyConnected} />
+        <ConnectionBadge
+          label="Hevy"
+          connected={data.hevyConnected}
+          detail={data.hevySource === "csv" ? "CSV import" : undefined}
+        />
         <ConnectionBadge label="Garmin Connect" connected={data.garminConnected} />
       </section>
 
